@@ -1,4 +1,4 @@
-package com.sapientrazorfish.eurekaservice;
+package com.ftd.eurekaservice;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
