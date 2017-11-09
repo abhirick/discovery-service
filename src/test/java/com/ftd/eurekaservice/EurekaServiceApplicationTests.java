@@ -1,4 +1,4 @@
-package com.sapientrazorfish.eurekaservice;
+package com.ftd.eurekaservice;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
