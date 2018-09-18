@@ -1,0 +1,85 @@
+# ===================================================================
+# Spring Boot configuration.
+#
+# This configuration will be overriden by the Spring profile you use,
+# for example application-dev.yml if you use the "dev" profile.
+# ===================================================================
+
+# ===================================================================
+# Standard Spring Boot properties.
+# Full reference is available at:
+# http://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html
+# ===================================================================
+
+# Application Name:
+spring: 
+  application:
+    name: discovery-service
+  profiles:
+    active: local # Active profiles.
+
+management:
+  context-path: '/'
+    
+    
+server:
+  port: 8761 # Port on which this spring application would start. 8761 is the default one for Eureka servers.
+  
+eureka:
+  instance:
+    hostname: localhost
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+    statusPageUrlPath: ${management.context-path}/info
+    healthCheckUrlPath: ${management.context-path}/health
+    lease-renewal-interval-in-seconds: 2
+    lease-expiration-duration-in-seconds: 20
+  client:
+    register-with-eureka: false # By default, the registry will also attempt to register itself, so you’ll need to disable that.
+                                # In other words,the built-in Eureka Client should not to register with itself, because our application should be acting as a server.
+    fetch-registry: false # Indicates whether this client should fetch eureka registry information from eureka server.
+    eurekaServerPort: 8761
+    service-url:
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
+    
+logging:
+  level:
+    com:
+      netflix:
+        eureka: OFF
+        discovery: OFF
+  
+  
+# Actuator Configurations:
+endpoints:
+  actuator:
+    sensitive: false
+  metrics:
+    sensitive: false
+  trace:
+    sensitive: false
+  auditevents:
+    sensitive: false
+  autoconfig:
+    sensitive: false
+  beans:
+    sensitive: false
+  configprops:
+    sensitive: false
+  dump:
+    sensitive: false
+  loggers:
+    sensitive: false
+  env:
+    sensitive: false
+  mappings:
+    sensitive: false
+  hypermedia:
+    enabled: true
+  info:
+    sensitive: false 
+  
+# ===================================================================
+# Custom Properties:
+# ===================================================================
+
+ 

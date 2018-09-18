@@ -1,38 +1,81 @@
 node {
-        def image='eurekaservice'
-        stage ('SCM') {
-            checkout([$class: 'GitSCM', branches: [[name: '*/discovery-service-dev']], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'CleanBeforeCheckout']], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'FTDGIT', url: 'https://s_fuser@del.tools.publicis.sapient.com/bitbucket/scm/ftd/discovery-service.git']]])
-        }
-        stage('Build') {
-        		sh "mvn clean package"
-        }
-        stage('Quality') {
-            withSonarQubeEnv('FTD_SONAR') {
-            		sh 'mvn sonar:sonar'
-        		}
-        }
-        stage("Quality Gate"){
-            timeout(time: 5, unit: 'MINUTES') { // Just in case something goes wrong, pipeline will be killed after a timeout
-                def qg = waitForQualityGate() // Reuse taskId previously collected by withSonarQubeEnv
-                if (qg.status != 'OK') {
-                  error "Pipeline aborted due to quality gate failure: ${qg.status}"
+    stage 'Clone the project'
+    git 'https://github.com/abhirick/discovery-service.git'
+
+    dir('spring-jenkins-pipeline') {
+        stage("Compilation and Analysis") {
+            parallel 'Compilation': {
+                if (isUnix()) {
+                    sh "./mvnw clean install -DskipTests"
+                } else {
+                    bat "./mvnw.cmd clean install -DskipTests"
+                }
+            }, 'Static Analysis': {
+                stage("Checkstyle") {
+                    if (isUnix()) {
+                        sh "./mvnw checkstyle:checkstyle"
+                    } else {
+                        bat "./mvnw.cmd checkstyle:checkstyle"
+                    }
+                     step([$class: 'CheckStylePublisher',
+                          canRunOnFailed: true,
+                          defaultEncoding: '',
+                          healthy: '100',
+                          pattern: '**/target/checkstyle-result.xml',
+                          unHealthy: '90',
+                          useStableBuildAsReference: true
+                        ])
                 }
             }
         }
-        stage("Build Docker Image") {
-        		docker.build("${image}")
-        		sh "docker save -o ${image}.tar ${image}"
+
+        stage("Tests and Deployment") {
+            parallel 'Unit tests': {
+                stage("Running unit tests") {
+                    try {
+                        if (isUnix()) {
+                            sh "./mvnw test -Punit"
+                        } else {
+                            bat "./mvnw.cmd test -Punit"
+                        }
+                    } catch(err) {
+                        step([$class: 'JUnitResultArchiver', testResults: '**/target/surefire-reports/TEST-*UnitTest.xml'])
+                        throw err
+                    }
+                    step([$class: 'JUnitResultArchiver', testResults: '**/target/surefire-reports/TEST-*UnitTest.xml'])
+
+                }
+            }, 'Integration tests': {
+                stage("Running integration tests") {
+                    try {
+                        if (isUnix()) {
+                            sh "./mvnw test -Pintegration"
+                        } else {
+                            bat "./mvnw.cmd test -Pintegration"
+                        }
+                    } catch(err) {
+                        step([$class: 'JUnitResultArchiver', testResults: '**/target/surefire-reports/TEST-*IntegrationTest.xml'])
+                        throw err
+                    }
+                    step([$class: 'JUnitResultArchiver', testResults: '**/target/surefire-reports/TEST-*IntegrationTest.xml'])
+                }
+            }
+
+            stage("Staging") {
+                if (isUnix()) {
+                    sh "pid=\$(lsof -i:8989 -t); kill -TERM \$pid || kill -KILL \$pid"
+                } else {
+                    bat "FOR /F \"tokens=5 delims= \" %%G IN (\"netstat -a | findstr :8989\") DO TaskKill.exe /PID %%G /fi \"memusage gt 0\""
+                }
+
+                withEnv(['JENKINS_NODE_COOKIE=dontkill']) {
+                    if (isUnix()) {
+                        sh 'nohup ./mvnw spring-boot:run -Dserver.port=8989 &'
+                    } else {
+                        bat 'start ./mvnw.cmd spring-boot:run -Dserver.port=8989'
+                    }
+                }
+            }
         }
-        stage("Remote Copy") {
-			sh "scp ${image}.tar ${DOCKER_SERVICES_TARGET_USER}@${DOCKER_SERVICES_TARGET_HOST}:${REMOTE_TEMP_DIR}"
-        }
- 		stage("Load Image Remotely") {
-			sh "ssh ${DOCKER_SERVICES_TARGET_USER}@${DOCKER_SERVICES_TARGET_HOST} \"docker load < ${REMOTE_TEMP_DIR}/${image}.tar\""
-        }
-        stage("Cleanup") {
-            sh "rm -rf ${image}.tar"
-            sh "ssh ${DOCKER_SERVICES_TARGET_USER}@${DOCKER_SERVICES_TARGET_HOST} \"rm -rf ${REMOTE_TEMP_DIR}/${image}.tar\""
-			sh "docker image rm -f ${image}"
-			sh "ssh ${DOCKER_SERVICES_TARGET_USER}@${DOCKER_SERVICES_TARGET_HOST} \"docker images -aq --filter dangling=true | xargs -r docker rmi -f\""
-        }
+    }
 }

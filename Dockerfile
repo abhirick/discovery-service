@@ -1,11 +1,20 @@
-#Set Base image
-FROM java:8
-#Maintainer
-MAINTAINER SUBHASH
-#Exposed Port
-EXPOSE 8761 
-#Volume TMP
+# Start with a base image containing Java runtime
+FROM openjdk:8-jdk-alpine
+
+# Add Maintainer Info
+LABEL maintainer="Sapient"
+ 
+# Make port 8761 available to the world outside this container
+EXPOSE 8761
+  
+# Add a volume pointing to /tmp
 VOLUME /tmp
-ADD target/eurekaservice-0.0.1-SNAPSHOT.jar app.jar
-RUN bash -c 'touch /app.jar'
-ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
+
+# The application's jar file
+ARG JAR_FILE=target/discovery-service-0.0.1-SNAPSHOT.jar
+
+# Add the application's jar to the container
+ADD ${JAR_FILE} discovery.jar
+  
+# Run the jar file 
+ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-jar","/discovery.jar"]
