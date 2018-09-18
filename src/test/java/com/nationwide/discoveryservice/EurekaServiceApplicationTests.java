@@ -1,4 +1,4 @@
-package com.sapientrazorfish.eurekaservice;
+package com.nationwide.discoveryservice;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;

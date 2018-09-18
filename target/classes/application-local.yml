@@ -1,0 +1,30 @@
+# ===================================================================
+# Spring Boot configuration.
+#
+# This configuration will be overriden by the Spring profile you use,
+# for example application-dev.yml if you use the "dev" profile.
+# ===================================================================
+
+# ===================================================================
+# Standard Spring Boot properties.
+# Full reference is available at:
+# http://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html
+# ===================================================================
+
+# Application Name:
+info:
+  app :
+    name: Discovery Service.
+    description: This microservice will provide the service registry and discovery server.
+                 All the clients can retrieve list of all connected peers of a service registry and makes all further requests to any other 
+                 services through a load-balancing algorithm.
+                 It's a Spring Boot Application that runs on embedded tomcat.
+    version: 1.0.0
+    
+spring: 
+  profiles:
+    active: local # Active profiles.
+
+# ===================================================================
+# Custom Properties:
+# ===================================================================
